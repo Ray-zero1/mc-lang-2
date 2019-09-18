@@ -170,24 +170,36 @@ static std::unique_ptr<ExprAST> ParseParenExpr() {
 static std::unique_ptr<ExprAST> ParseIdentifierExpr() {
     return nullptr;
     // 1. getIdentifierを用いて識別子を取得する。
-
+    std::string Identifier = lexer.getIdentifier();
     // 2. トークンを次に進める。
-
+    getNextToken();
     // 3. 次のトークンが'('の場合は関数呼び出し。そうでない場合は、
     // VariableExprASTを識別子を入れてインスタンス化し返す。
-
+     if (CurTok != '('){
+        return llvm::make_unique<VariableExprAST>(Identifier);
+     }
     // 4. '('を読んでトークンを次に進める。
-
+     getNextToken();
     // 5. 関数fooの呼び出しfoo(3,4,5)の()内をパースする。
     // 引数は数値、二項演算子、(親関数で定義された)引数である可能性があるので、
     // ParseExpressionを用いる。
+    
     // 呼び出しが終わるまで(CurTok == ')'になるまで)引数をパースしていき、都度argsにpush_backする。
     // 呼び出しの終わりと引数同士の区切りはCurTokが')'であるか','であるかで判別できることに注意。
     std::vector<std::unique_ptr<ExprAST>> args;
+    while (CurTok != '('){
+       getNextToken();
+       auto outcome = ParseExpression();
+       if (CurTok ==','){
+           args.push_back(std::move(outcome));
+       }
+    }
+
 
     // 6. トークンを次に進める。
-
+    getNextToken();
     // 7. CallExprASTを構成し、返す。
+    return llvm::make_unique<CallExprAST>(Identifier,std::move(args));
 }
 
 // ParsePrimary - NumberASTか括弧をパースする関数
@@ -251,8 +263,41 @@ static std::unique_ptr<PrototypeAST> ParsePrototype() {
     // 2.2とほぼ同じ。CallExprASTではなくPrototypeASTを返し、
     // 引数同士の区切りが','ではなくgetNextToken()を呼ぶと直ぐに
     // CurTokに次の引数(もしくは')')が入るという違いのみ。
-    return nullptr;
+     // 1. getIdentifierを用いて識別子を取得する。
+    std::string Identifier = lexer.getIdentifier();
+    // 2. トークンを次に進める。
+    getNextToken();
+    // 3. 次のトークンが'('の場合は関数呼び出し。そうでない場合は、
+    // VariableExprASTを識別子を入れてインスタンス化し返す。
+     if (CurTok != '(')
+        return nullptr;
+     
+    // 4. '('を読んでトークンを次に進める。
+     getNextToken();
+    // 5. 関数fooの呼び出しfoo(3,4,5)の()内をパースする。
+    // 引数は数値、二項演算子、(親関数で定義された)引数である可能性があるので、
+    // ParseExpressionを用いる。
+    
+    // 呼び出しが終わるまで(CurTok == ')'になるまで)引数をパースしていき、都度argsにpush_backする。
+    // 呼び出しの終わりと引数同士の区切りはCurTokが')'であるか','であるかで判別できることに注意。
+    std::vector<std::string> args;
+    while (CurTok != '('){
+       getNextToken();
+       if (CurTok ==')'){
+            std::string result = lexer.getIdentifier();
+            args.push_back(result);           
+          break;
+       }
+    }
+ 
+
+    // 6. トークンを次に進める。
+    getNextToken();
+    // 7. CallExprASTを構成し、返す。
+    return llvm::make_unique<PrototypeAST>(Identifier,std::move(args));
 }
+
+
 
 static std::unique_ptr<FunctionAST> ParseDefinition() {
     getNextToken();
