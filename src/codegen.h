@@ -31,15 +31,19 @@ Value *LogErrorV(const char *str) {
 
 // TODO 2.4: 引数のcodegenを実装してみよう
 Value *VariableExprAST::codegen() {
-    return nullptr;
+    
     // NamedValuesの中にVariableExprAST::NameとマッチするValueがあるかチェックし、
     // あったらそのValueを返す。
+    if (NamedValues.count(VariableExprAST::variableName) > 0)
+    {     return NamedValues[VariableExprAST::variableName];
+    }
+    return nullptr; 
 }
 
 // TODO 2.5: 関数呼び出しのcodegenを実装してみよう
 Value *CallExprAST::codegen() {
     return nullptr;
-    // 1. myModule->getFunctionを用いてcalleeがdefineされているかを
+    // 1. myModule->getFunctionを用いてcalleeがdefineされているかをzero
     // チェックし、されていればそのポインタを得る。
 
     // 2. llvm::Function::arg_sizeと実際に渡されたargsのサイズを比べ、

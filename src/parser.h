@@ -263,41 +263,27 @@ static std::unique_ptr<PrototypeAST> ParsePrototype() {
     // 2.2とほぼ同じ。CallExprASTではなくPrototypeASTを返し、
     // 引数同士の区切りが','ではなくgetNextToken()を呼ぶと直ぐに
     // CurTokに次の引数(もしくは')')が入るという違いのみ。
-     // 1. getIdentifierを用いて識別子を取得する。
-    std::string Identifier = lexer.getIdentifier();
-    // 2. トークンを次に進める。
+      if (CurTok != tok_identifier)
+        return LogErrorP("Expected function name in prototype");
+
+    std::string FnName = lexer.getIdentifier();;
     getNextToken();
-    // 3. 次のトークンが'('の場合は関数呼び出し。そうでない場合は、
-    // VariableExprASTを識別子を入れてインスタンス化し返す。
-     if (CurTok != '(')
-        return nullptr;
-     
-    // 4. '('を読んでトークンを次に進める。
-     getNextToken();
-    // 5. 関数fooの呼び出しfoo(3,4,5)の()内をパースする。
-    // 引数は数値、二項演算子、(親関数で定義された)引数である可能性があるので、
-    // ParseExpressionを用いる。
-    
-    // 呼び出しが終わるまで(CurTok == ')'になるまで)引数をパースしていき、都度argsにpush_backする。
-    // 呼び出しの終わりと引数同士の区切りはCurTokが')'であるか','であるかで判別できることに注意。
-    std::vector<std::string> args;
-    while (CurTok != '('){
-       getNextToken();
-       if (CurTok ==')'){
-            std::string result = lexer.getIdentifier();
-            args.push_back(result);           
-          break;
-       }
+
+    if (CurTok != '(')
+        return LogErrorP("Expected '(' in prototype");
+
+    std::vector<std::string> ArgNames;
+    while (getNextToken() == tok_identifier) {
+        std::string curArg = lexer.getIdentifier();
+        ArgNames.push_back(curArg);
     }
- 
+    if (CurTok != ')')
+        return LogErrorP("Expected ')' in prototype");
 
-    // 6. トークンを次に進める。
     getNextToken();
-    // 7. CallExprASTを構成し、返す。
-    return llvm::make_unique<PrototypeAST>(Identifier,std::move(args));
+
+    return llvm::make_unique<PrototypeAST>(FnName, std::move(ArgNames));
 }
-
-
 
 static std::unique_ptr<FunctionAST> ParseDefinition() {
     getNextToken();
@@ -309,6 +295,7 @@ static std::unique_ptr<FunctionAST> ParseDefinition() {
         return llvm::make_unique<FunctionAST>(std::move(proto), std::move(E));
     return nullptr;
 }
+
 
 // ExprASTは1. 数値リテラル 2. '('から始まる演算 3. 二項演算子の三通りが考えられる為、
 // 最初に1,2を判定して、そうでなければ二項演算子だと思う。
